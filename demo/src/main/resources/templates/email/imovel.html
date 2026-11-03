@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Informações do imóvel</title></head>
+<body style="font-family:Arial,sans-serif;color:#263238;line-height:1.6;max-width:640px;margin:auto;padding:24px">
+    <h1>Seu próximo imóvel está aqui</h1>
+    <p>Olá, <strong th:text="${cliente.nome}">Cliente</strong>!</p>
+    <p>Obrigado pelo interesse! Nossa imobiliária preparou os detalhes deste imóvel para você.
+        Será um prazer ajudar a encontrar o espaço ideal e combinar uma visita.</p>
+    <h2 th:text="${imovel.titulo}">Título do imóvel</h2>
+    <p th:text="${imovel.descricao}" style="white-space:pre-line">Descrição</p>
+    <table cellpadding="8" style="width:100%;border-collapse:collapse;text-align:left">
+        <tr><th>Finalidade</th><td th:text="${imovel.finalidade}"></td></tr>
+        <tr><th>Status</th><td th:text="${imovel.status}"></td></tr>
+        <tr th:if="${imovel.tipoImovel != null}"><th>Tipo</th><td th:text="${imovel.tipoImovel.nome}"></td></tr>
+        <tr th:if="${imovel.precoVenda != null}"><th>Venda</th><td th:text="${'R$ ' + #numbers.formatDecimal(imovel.precoVenda, 1, 'POINT', 2, 'COMMA')}"></td></tr>
+        <tr th:if="${imovel.precoAluguel != null}"><th>Aluguel</th><td th:text="${'R$ ' + #numbers.formatDecimal(imovel.precoAluguel, 1, 'POINT', 2, 'COMMA')}"></td></tr>
+        <tr><th>Endereço</th><td><span th:text="${imovel.endereco}"></span> <span th:text="${imovel.numero}"></span> <span th:text="${imovel.complemento}"></span></td></tr>
+        <tr th:if="${imovel.bairro != null}"><th>Bairro / cidade / estado</th><td><span th:text="${imovel.bairro.nome}"></span> / <span th:text="${imovel.bairro.cidade}"></span> / <span th:text="${imovel.bairro.estado}"></span></td></tr>
+        <tr><th>CEP</th><td th:text="${imovel.cep}"></td></tr>
+        <tr><th>Dormitórios</th><td th:text="${imovel.dormitorios}"></td></tr>
+        <tr><th>Banheiros</th><td th:text="${imovel.banheiros}"></td></tr>
+        <tr><th>Vagas de garagem</th><td th:text="${imovel.garagem}"></td></tr>
+        <tr th:if="${imovel.areaTotal != null}"><th>Área total</th><td th:text="${imovel.areaTotal + ' m²'}"></td></tr>
+        <tr th:if="${imovel.areaConstruida != null}"><th>Área construída</th><td th:text="${imovel.areaConstruida + ' m²'}"></td></tr>
+    </table>
+    <p th:if="${imovel.caracteristicas != null}" th:text="${imovel.caracteristicas}" style="white-space:pre-line"></p>
+    <h3>Sua solicitação</h3>
+    <p th:text="${cliente.mensagem}" style="white-space:pre-line"></p>
+    <p>Telefone informado: <span th:text="${cliente.telefone}"></span><br>
+        Email: <span th:text="${cliente.email}"></span></p>
+    <p>Conte com nossa equipe para esclarecer suas dúvidas.<br><strong>Equipe da imobiliária</strong></p>
+</body>
+</html>

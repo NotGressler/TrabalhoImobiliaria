@@ -1,0 +1,30 @@
+POST http://localhost:8080/fotos
+Content-Type: multipart/form-data; boundary=MinhaDivisoria
+
+--MinhaDivisoria
+Content-Disposition: form-data; name="imovelId"
+
+1
+--MinhaDivisoria
+Content-Disposition: form-data; name="arquivo"; filename="foto.jpg"
+Content-Type: image/jpeg
+
+< ../foto.jpg
+--MinhaDivisoria--
+
+### SUBSTITUIR a foto
+PUT http://localhost:8080/fotos/6
+Content-Type: multipart/form-data; boundary=MinhaDivisoria
+
+--MinhaDivisoria
+Content-Disposition: form-data; name="arquivo"; filename="foto2.jpg"
+Content-Type: image/jpeg
+
+< ../foto.jpg
+--MinhaDivisoria--
+
+### Definir a foto 7 como capa (clique em Send Request abaixo; sem corpo)
+PATCH http://localhost:8080/fotos/7/capa
+
+### Excluir a foto 6 e o arquivo (execute apenas se quiser excluir)
+DELETE http://localhost:8080/fotos/6

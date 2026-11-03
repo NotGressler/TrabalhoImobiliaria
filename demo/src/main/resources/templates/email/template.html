@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="">
+    <div style="">
+        <h2 style="">
+	        Olá, <span th:text="${nome}">Usuário</span>!
+	       </h2>
+
+        <p>Seu cadastro foi realizado com sucesso.</p>
+
+        <p>Seus itens:</p>
+        <ul>
+            <li th:each="item : ${itens}" 
+	            th:text="${item}">Item
+	           </li>
+        </ul>
+
+        <a th:href="${link}"
+           style="">
+            Teste de link 
+        </a>
+    </div>
+</body>
+</html>
