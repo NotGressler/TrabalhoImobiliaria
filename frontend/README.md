@@ -1,17 +1,18 @@
-# Morada — Frontend
+# Frontend JG Imóveis
 
-Vitrine pública de imóveis feita com Next.js, React e TypeScript. Os cards consomem os imóveis disponíveis do backend Spring e permitem filtrar por venda ou locação, pesquisar por localização e abrir os detalhes do imóvel.
+React, Next.js App Router, TypeScript e Tailwind CSS/CSS próprio. Ícones em SVG local, requisições com fetch e componentes próprios, sem shadcn/ui, React Hook Form, Zod, TanStack, Recharts, Lucide ou Playwright.
 
-## Executar localmente
-
-Na pasta `frontend`:
+## Compilar para o Spring Boot
 
 ```powershell
-npm.cmd install
-Copy-Item .env.example .env.local
-npm.cmd run dev
+npm.cmd ci
+npm.cmd run build
 ```
 
-Abra `http://localhost:3000`. Por padrão, o frontend consulta o backend em `http://localhost:8080`; para usar outro endereço, ajuste `API_URL` em `.env.local`.
+A pasta `out` contém o site estático e é incluída pelo Maven nos recursos do backend. Prefira executar `iniciar.ps1` na raiz para compilar e iniciar tudo junto. Acesse http://localhost:8080.
 
-A vitrine usa `GET /imoveis` e `GET /fotos/vitrine`. O backend precisa estar iniciado e deve permitir consultas públicas a esses endpoints e às imagens em `/fotos/{imovelId}/{nomeArquivo}`. Quando a API não estiver disponível, a página mostra uma mensagem de erro em vez de anúncios fictícios.
+Os dados são buscados no navegador em `/imoveis` e `/fotos/vitrine`, na mesma origem do site. Não há dependência da API ou do banco durante o build.
+
+`NEXT_PUBLIC_API_URL` é opcional e fica vazio no modo Spring Boot. Para usar uma API de outra origem, configure esse valor antes do build e permita CORS no backend.
+
+`npm.cmd run dev` continua disponível para desenvolvimento do frontend na porta 3000; nesse modo, uma API externa exige configurar a origem e o CORS. O comando `next start` não é utilizado com exportação estática.

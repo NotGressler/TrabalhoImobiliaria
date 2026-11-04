@@ -27,6 +27,9 @@ class SecurityTests {
 
     @RestController
     static class Routes {
+        @GetMapping("/") String home() { return "site"; }
+        @GetMapping("/_next/static/test.js") String asset() { return "script"; }
+        @GetMapping("/images/logo-jg.png") String logo() { return "image"; }
         @GetMapping("/imoveis") String list() { return "[]"; }
         @PostMapping("/imoveis") void insert() {}
         @GetMapping("/fotos/vitrine") String photos() { return "[]"; }
@@ -47,6 +50,9 @@ class SecurityTests {
             var mvc = MockMvcBuilders.webAppContextSetup(context)
                 .addFilters(context.getBean("springSecurityFilterChain", Filter.class)).build();
             var encoder = context.getBean(JwtEncoder.class);
+            mvc.perform(get("/")).andExpect(status().isOk());
+            mvc.perform(get("/_next/static/test.js")).andExpect(status().isOk());
+            mvc.perform(get("/images/logo-jg.png")).andExpect(status().isOk());
             String user = token(encoder, "USER", Instant.now().plusSeconds(3600));
             String admin = token(encoder, "ADMIN", Instant.now().plusSeconds(3600));
             mvc.perform(get("/imoveis")).andExpect(status().isOk());

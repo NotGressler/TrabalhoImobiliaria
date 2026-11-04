@@ -1,16 +1,16 @@
 **Requisitos e funcionalidades**:
 
 -   **Front End**:
-    - Framework: React com Next.js (App Router) e TypeScript, consumindo o back end existente;
-    - Estilos e componentes: Tailwind CSS e shadcn/ui;
-    - Formulários e validação: React Hook Form e Zod;
-    - Comunicação e cache da API: TanStack Query e `fetch`;
-    - Tabelas administrativas: TanStack Table;
-    - Gráficos do painel: Recharts;
-    - Ícones: Lucide React;
-    - Testes de ponta a ponta: Playwright;
+    - Framework: React com Next.js (App Router) e TypeScript, com exportação estática servida pelo Spring Boot e consumo da API existente via fetch;
+    - Estilos e componentes: Tailwind CSS, CSS próprio e componentes React reutilizáveis;
+    - Formulários e validação: React, validação nativa do HTML e funções TypeScript; validar também no backend;
+    - Comunicação com a API: `fetch`, com tratamento compartilhado de autenticação e erros;
+    - Tabelas administrativas: tabelas HTML com paginação, filtros e ordenação;
+    - Gráficos do painel: componentes próprios com CSS e/ou SVG, com rótulos e valores acessíveis;
+    - Ícones: SVGs locais em componentes React;
+    - Verificação dos fluxos: roteiro manual de login, permissões, CRUDs e regras de negócio; manter os testes existentes do backend;
     - Autenticação: JWT Bearer nas requisições autenticadas. Avaliar uso de cookie `HttpOnly` com suporte do backend para armazenamento mais seguro do token;
-    - Configurar CORS no back end para permitir chamadas da origem do Next.js;
+    - Hospedagem: Spring Boot serve o frontend e a API na mesma origem (porta 8080); não é necessário CORS nesse modo;
 
 
 - **Área pública:**
