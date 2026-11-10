@@ -1,37 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { homeFor, useAuth } from "../auth/AuthProvider";
 import PropertyImage from "../components/PropertyImage";
-import PropertyGallery from "../components/PropertyGallery";
 import useFavorites from "../hooks/useFavorites";
 
-export type Property = {
-  id: number;
-  titulo?: string | null;
-  descricao?: string | null;
-  finalidade?: string | null;
-  status?: string | null;
-  dormitorios?: number | null;
-  banheiros?: number | null;
-  garagem?: number | null;
-  areaTotal?: number | string | null;
-  precoVenda?: number | string | null;
-  precoAluguel?: number | string | null;
-  endereco?: string | null;
-  numero?: string | null;
-  bairro?: { nome?: string | null; cidade?: string | null; estado?: string | null } | null;
-  tipoImovel?: { nome?: string | null } | null;
-  destaque?: boolean | null;
-};
-
-export type PropertyPhoto = {
-  imovelId: number;
-  nomeArquivo: string;
-  capa?: boolean | null;
-  ordem?: number | null;
-};
+import { normalize, purposeOf, hasPrice, supportsPurpose, amountOf, formatCurrency, formatArea, Icon, photosFor, type Property, type PropertyPhoto, type Purpose } from "../lib/property";
+export type { Property, PropertyPhoto } from "../lib/property";
 
 type Props = {
   properties: Property[];
@@ -42,104 +18,6 @@ type Props = {
   loading?: boolean;
   clientArea?: boolean;
 };
-
-type Purpose = "todos" | "venda" | "aluguel";
-
-function normalize(value: string | null | undefined) {
-  return (value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
-function purposeOf(property: Property): Exclude<Purpose, "todos"> | null {
-  const purpose = normalize(property.finalidade);
-  if (purpose === "ambos" || (purpose.includes("vend") && (purpose.includes("alug") || purpose.includes("loca")))) return null;
-  if (purpose.includes("vend")) return "venda";
-  if (purpose.includes("alug") || purpose.includes("loca")) return "aluguel";
-  if (hasPrice(property.precoAluguel) && !hasPrice(property.precoVenda)) return "aluguel";
-  if (hasPrice(property.precoVenda) && !hasPrice(property.precoAluguel)) return "venda";
-  return null;
-}
-
-function hasPrice(value: number | string | null | undefined) {
-  const amount = Number(value);
-  return value != null && value !== "" && Number.isFinite(amount) && amount > 0;
-}
-
-function supportsPurpose(property: Property, purpose: Exclude<Purpose, "todos">) {
-  const declaredPurpose = purposeOf(property);
-  if (declaredPurpose) return declaredPurpose === purpose;
-  return purpose === "venda" ? hasPrice(property.precoVenda) : hasPrice(property.precoAluguel);
-}
-
-function amountOf(property: Property, purpose: Purpose) {
-  if (purpose === "aluguel") return property.precoAluguel;
-  if (purpose === "venda") return property.precoVenda;
-  if (hasPrice(property.precoVenda)) return property.precoVenda;
-  return hasPrice(property.precoAluguel) ? property.precoAluguel : null;
-}
-
-function formatCurrency(value: number | string | null | undefined) {
-  if (value == null || value === "") return "Consulte o valor";
-  const amount = Number(value);
-  if (!Number.isFinite(amount)) return "Consulte o valor";
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
-
-function formatArea(value: number | string | null | undefined) {
-  if (value == null || value === "") return null;
-  const area = Number(value);
-  return Number.isFinite(area) ? `${area} m²` : null;
-}
-
-function Icon({
-  name,
-  size = 18,
-}: {
-  name: "search" | "pin" | "bed" | "bath" | "car" | "arrow" | "close";
-  size?: number;
-}) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.7,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true as const,
-  };
-
-  switch (name) {
-    case "search":
-      return <svg {...common}><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>;
-    case "pin":
-      return <svg {...common}><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
-    case "bed":
-      return <svg {...common}><path d="M3 19v-8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8M3 15h18M7 9V6h4v3M3 19v2m18-2v2" /></svg>;
-    case "bath":
-      return <svg {...common}><path d="M4 12h16v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3ZM6 12V5a2 2 0 0 1 4 0v1M3 20l-1 2m19-2 1 2" /></svg>;
-    case "car":
-      return <svg {...common}><path d="m5 11 1.5-5h11l1.5 5M3 16v-3a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3M5 16h14M6 16v2m12-2v2" /><circle cx="7" cy="13.5" r=".7" /><circle cx="17" cy="13.5" r=".7" /></svg>;
-    case "arrow":
-      return <svg {...common}><path d="M5 12h14m-6-6 6 6-6 6" /></svg>;
-    case "close":
-      return <svg {...common}><path d="m18 6-12 12M6 6l12 12" /></svg>;
-  }
-}
-
-function photosFor(propertyId: number, photos: PropertyPhoto[]) {
-  return photos
-    .filter((photo) => photo.imovelId === propertyId)
-    .sort((a, b) => Number(Boolean(b.capa)) - Number(Boolean(a.capa)) || (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
-}
 
 export default function PropertyShowcase({
   properties,
@@ -157,13 +35,8 @@ export default function PropertyShowcase({
   const [propertyType, setPropertyType] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [filters, setFilters] = useState({ purpose: "todos" as Purpose, search: "", propertyType: "", maxPrice: "" });
-  const [showAll, setShowAll] = useState(false);
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const detailDialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (selectedProperty) detailDialog.current?.showModal();
-    else detailDialog.current?.close();
-  }, [selectedProperty]);
+  const [page, setPage] = useState(1);
+  const [priceOrder, setPriceOrder] = useState("destaques");
 
   const availableProperties = useMemo(
     () => properties.filter((property) => normalize(property.status) === "disponivel"),
@@ -198,19 +71,28 @@ export default function PropertyShowcase({
   }, [availableProperties, filters]);
 
   const types = [...new Set(availableProperties.map((property) => property.tipoImovel?.nome).filter((name): name is string => Boolean(name)))].sort();
-  const displayedProperties = showAll ? visibleProperties : visibleProperties.slice().sort((a, b) => Number(Boolean(b.destaque)) - Number(Boolean(a.destaque))).slice(0, 3);
+  const orderedProperties = useMemo(() => [...visibleProperties].sort((a, b) => {
+    if (priceOrder === "destaques") return Number(Boolean(b.destaque)) - Number(Boolean(a.destaque)) || a.id - b.id;
+    const aPrice = amountOf(a, filters.purpose);
+    const bPrice = amountOf(b, filters.purpose);
+    if (!hasPrice(aPrice)) return hasPrice(bPrice) ? 1 : a.id - b.id;
+    if (!hasPrice(bPrice)) return -1;
+    return (Number(aPrice) - Number(bPrice)) * (priceOrder === "menor" ? 1 : -1) || a.id - b.id;
+  }), [visibleProperties, priceOrder, filters.purpose]);
+  const totalPages = Math.max(1, Math.ceil(orderedProperties.length / 6));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * 6;
+  const displayedProperties = orderedProperties.slice(startIndex, startIndex + 6);
+  function changePage(next: number) {
+    setPage(Math.max(1, Math.min(next, totalPages)));
+    document.getElementById("imoveis")?.scrollIntoView({ block: "start" });
+  }
 
   const imageUrl = (property: Property) => {
     const photo = photosFor(property.id, photos)[0];
     if (!photo?.nomeArquivo) return null;
     return `${apiUrl}/fotos/${property.id}/${encodeURIComponent(photo.nomeArquivo)}`;
   };
-  const selectedPurpose = selectedProperty ? purposeOf(selectedProperty) : null;
-  const selectedHasBothPurposes =
-    selectedProperty != null &&
-    selectedPurpose == null &&
-    hasPrice(selectedProperty.precoVenda) &&
-    hasPrice(selectedProperty.precoAluguel);
 
   const favoriteProperties = favorites.ids.map((id) => properties.find((property) => property.id === id)).filter((property): property is Property => Boolean(property));
   const renderPropertyCard = (property: Property) => {
@@ -226,10 +108,9 @@ export default function PropertyShowcase({
 
     return (
       <article className="property-card" key={property.id} data-property-id={property.id}>
-        <button
+        <a
           className="card-image-button"
-          onClick={() => { favorites.clearMessage(); setSelectedProperty(property); }}
-          type="button"
+          href={`/imovel/?id=${property.id}${clientArea ? "&origem=cliente" : ""}`}
           aria-label={`Ver detalhes de ${property.titulo ?? `imóvel ${property.id}`}`}
         >
           <div className="card-image">
@@ -242,7 +123,7 @@ export default function PropertyShowcase({
             </span>
             {clientArea && favorites.ids.includes(property.id) ? <span className="featured-badge saved-badge">♥ FAVORITO</span> : property.destaque && <span className="featured-badge">DESTAQUE</span>}
           </div>
-        </button>
+        </a>
         <div className="card-content">
           <div className="card-category-row">
             <span>{property.tipoImovel?.nome ?? "Imóvel"}</span>
@@ -278,14 +159,13 @@ export default function PropertyShowcase({
                 </p>
               </div>
             )}
-            <button
+            <a
               className="details-button"
-              onClick={() => { favorites.clearMessage(); setSelectedProperty(property); }}
-              type="button"
+              href={`/imovel/?id=${property.id}${clientArea ? "&origem=cliente" : ""}`}
               aria-label={`Ver detalhes do imóvel ${property.id}`}
             >
               Ver detalhes <Icon name="arrow" size={14} />
-            </button>
+            </a>
           </div>
         </div>
       </article>
@@ -301,8 +181,8 @@ export default function PropertyShowcase({
             <Image src="/images/logo-jg.png" alt="JG Imóveis" width={1536} height={1024} unoptimized priority />
           </a>
           <nav className="main-nav" aria-label="Navegação principal">
-            <a href="#imoveis" onClick={() => { setPurpose("venda"); setSearch(""); setPropertyType(""); setMaxPrice(""); setFilters({purpose:"venda", search:"", propertyType:"", maxPrice:""}); setShowAll(true); }}>Comprar</a>
-            <a href="#imoveis" onClick={() => { setPurpose("aluguel"); setSearch(""); setPropertyType(""); setMaxPrice(""); setFilters({purpose:"aluguel", search:"", propertyType:"", maxPrice:""}); setShowAll(true); }}>Alugar</a>
+            <a href="#imoveis" onClick={() => { setPurpose("venda"); setSearch(""); setPropertyType(""); setMaxPrice(""); setFilters({purpose:"venda", search:"", propertyType:"", maxPrice:""}); setPage(1); }}>Comprar</a>
+            <a href="#imoveis" onClick={() => { setPurpose("aluguel"); setSearch(""); setPropertyType(""); setMaxPrice(""); setFilters({purpose:"aluguel", search:"", propertyType:"", maxPrice:""}); setPage(1); }}>Alugar</a>
             <a href="#sobre">Sobre nós</a>
             <a href="#contato">Contato</a>
           </nav>
@@ -337,7 +217,7 @@ export default function PropertyShowcase({
       <form className="search-panel page-shell" onSubmit={(event) => {
         event.preventDefault();
         setFilters({purpose, search, propertyType, maxPrice});
-        setShowAll(true);
+        setPage(1);
         document.getElementById("imoveis")?.scrollIntoView({behavior:"smooth"});
       }}>
         <h2>O que você procura?</h2>
@@ -376,15 +256,25 @@ export default function PropertyShowcase({
         <div className="section-heading">
           <div>
             <p className="eyebrow section-eyebrow">SELEÇÃO ESPECIAL</p>
-            <h2 id="listing-title">{showAll ? "Encontre seu imóvel" : "Imóveis em destaque"}</h2>
+            <h2 id="listing-title">Encontre seu imóvel</h2>
             <p className="section-description">Oportunidades escolhidas para você encontrar o lugar ideal.</p>
           </div>
+          <div className="listing-actions">
+          <label className="listing-sort">Ordenar por
+            <select value={priceOrder} onChange={(event) => { setPriceOrder(event.target.value); setPage(1); }}>
+              <option value="destaques">Destaques primeiro</option>
+              <option value="menor">Menor preço</option>
+              <option value="maior">Maior preço</option>
+            </select>
+          </label>
           <button className="text-button" type="button" onClick={() => {
-            setShowAll(true); setPurpose("todos"); setSearch(""); setPropertyType(""); setMaxPrice("");
+            setPage(1); setPurpose("todos"); setSearch(""); setPropertyType(""); setMaxPrice("");
             setFilters({purpose:"todos", search:"", propertyType:"", maxPrice:""});
           }}>Ver todos os imóveis <Icon name="arrow" size={16} /></button>
+          </div>
         </div>
-        {showAll && !loading && !propertiesError && <p className="results-count" role="status">{visibleProperties.length} {visibleProperties.length === 1 ? "imóvel encontrado" : "imóveis encontrados"}</p>}
+        {priceOrder !== "destaques" && filters.purpose === "todos" && <p className="sort-note">Para imóveis com venda e aluguel, a ordenação considera o valor de venda. Selecione “Alugar” para comparar os aluguéis.</p>}
+        {!loading && !propertiesError && <p className="results-count" role="status">{visibleProperties.length ? `Exibindo ${startIndex + 1}–${Math.min(startIndex + 6, visibleProperties.length)} de ${visibleProperties.length} imóveis` : "Nenhum imóvel encontrado"}</p>}
 
         {photosError && <p className="inline-notice" role="status">{photosError}</p>}
 
@@ -412,6 +302,14 @@ export default function PropertyShowcase({
             {displayedProperties.map(renderPropertyCard)}
           </div>
         )}
+        {!loading && !propertiesError && totalPages > 1 && <nav className="listing-pagination" aria-label="Páginas de imóveis">
+          <button type="button" disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}>← Anterior</button>
+          {Array.from({ length: totalPages }, (_, index) => index + 1).filter((number) => number === 1 || number === totalPages || Math.abs(number - currentPage) <= 1).map((number, index, pages) => <span className="pagination-item" key={number}>
+            {index > 0 && number - pages[index - 1] > 1 && <span className="pagination-gap" aria-hidden="true">…</span>}
+            <button type="button" aria-label={`Página ${number}`} aria-current={number === currentPage ? "page" : undefined} onClick={() => changePage(number)}>{number}</button>
+          </span>)}
+          <button type="button" disabled={currentPage === totalPages} onClick={() => changePage(currentPage + 1)}>Próxima →</button>
+        </nav>}
       </section>
 
       <section className="benefits page-shell" id="sobre" aria-label="Por que escolher a JG Imóveis">
@@ -433,62 +331,6 @@ export default function PropertyShowcase({
         </div>
       </footer>
 
-      {selectedProperty && (
-        <dialog ref={detailDialog} onClose={() => setSelectedProperty(null)} onClick={(event) => { if(event.target === event.currentTarget) setSelectedProperty(null); }}
-            aria-labelledby="modal-title"
-            aria-modal="true"
-            className="property-modal"
-            role="dialog"
-          >
-            <button
-              aria-label="Fechar detalhes"
-              className="modal-close"
-              onClick={() => setSelectedProperty(null)}
-              type="button"
-            >
-              <Icon name="close" />
-            </button>
-            <div className="property-detail-layout">
-              <PropertyGallery key={selectedProperty.id} photos={photosFor(selectedProperty.id, photos)} apiUrl={apiUrl} title={selectedProperty.titulo || "Imóvel"} />
-            <div className="modal-content">
-              <p className="eyebrow section-eyebrow">
-                {selectedHasBothPurposes ? "VENDA E LOCAÇÃO" : selectedPurpose === "aluguel" ? "PARA ALUGAR" : "À VENDA"} · CÓD. {selectedProperty.id.toString().padStart(4, "0")}
-              </p>
-              <h2 id="modal-title">{selectedProperty.titulo || `${selectedProperty.tipoImovel?.nome ?? "Imóvel"} disponível`}</h2>
-              <p className="card-location"><Icon name="pin" size={16} />
-                {[selectedProperty.endereco, selectedProperty.numero, selectedProperty.bairro?.nome, selectedProperty.bairro?.cidade]
-                  .filter(Boolean).join(", ") || "Localização não informada"}
-              </p>
-              {selectedHasBothPurposes ? (
-                <div className="modal-price-pair">
-                  <p className="modal-price">{formatCurrency(selectedProperty.precoVenda)}<span>à venda</span></p>
-                  <p className="modal-price">{formatCurrency(selectedProperty.precoAluguel)}<span>/mês para locação</span></p>
-                </div>
-              ) : (
-                <p className="modal-price">{formatCurrency(amountOf(selectedProperty, selectedPurpose ?? "todos"))}
-                  {selectedPurpose === "aluguel" && <span>/mês</span>}
-                </p>
-              )}
-              <div className="modal-features">
-                <span><Icon name="bed" />{selectedProperty.dormitorios ?? "—"} quartos</span>
-                <span><Icon name="bath" />{selectedProperty.banheiros ?? "—"} banheiros</span>
-                <span><Icon name="car" />{selectedProperty.garagem ?? "—"} vagas</span>
-                {formatArea(selectedProperty.areaTotal) && <span>{formatArea(selectedProperty.areaTotal)}</span>}
-              </div>
-              {clientArea && user?.tipo === "USER" && <div className="client-property-actions">
-                <div>
-                  {normalize(selectedProperty.status) === "disponivel" && <button className="primary-button" type="button" disabled title="Em breve">Fazer oferta</button>}
-                  <button className={favorites.ids.includes(selectedProperty.id) ? "secondary-button favorite-button is-saved" : "secondary-button favorite-button"} type="button" disabled={favorites.loading || Boolean(favorites.error) || favorites.busy !== null} aria-pressed={favorites.ids.includes(selectedProperty.id)} onClick={() => { void favorites.toggle(selectedProperty.id); }}><svg width="18" height="18" viewBox="0 0 24 24" fill={favorites.ids.includes(selectedProperty.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" /></svg>{favorites.busy === selectedProperty.id ? "Salvando..." : favorites.ids.includes(selectedProperty.id) ? "Remover dos favoritos" : "Favoritar imóvel"}</button>
-                </div>
-                <p>O envio de ofertas estará disponível em breve.</p>
-                {favorites.error && <p role="alert">{favorites.error} <button className="text-button" type="button" onClick={favorites.retry}>Tentar novamente</button></p>}
-                {favorites.message && <p className={favorites.message.error ? "favorite-error" : "favorite-success"} role={favorites.message.error ? "alert" : "status"}>{favorites.message.text}</p>}
-              </div>}
-              <p className="modal-description">{selectedProperty.descricao || "Mais informações sobre este imóvel em breve."}</p>
-            </div>
-            </div>
-          </dialog>
-      )}
     </main>
   );
 }

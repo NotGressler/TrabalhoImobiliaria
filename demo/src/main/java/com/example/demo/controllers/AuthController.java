@@ -13,21 +13,20 @@ import com.example.demo.dtos.TokenDTO;
 import com.example.demo.services.AuthService;
 
 @RestController
-@RequestMapping("/auth")
 public class AuthController {
     @Autowired private AuthService service;
 
-    @PostMapping("/login")
+    @PostMapping("/public/login")
     public ResponseEntity<TokenDTO> login(@RequestBody LoginDTO dto) {
         return ResponseEntity.ok(service.login(dto));
     }
 
-    @PostMapping("/register")
+    @PostMapping("/auth/register")
     public ResponseEntity<TokenDTO> register(@RequestBody RegisterDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.register(dto));
     }
 
-    @GetMapping("/me")
+    @GetMapping("/auth/me")
     public ResponseEntity<SessionUserDTO> me(@AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(service.currentUser(jwt));
     }

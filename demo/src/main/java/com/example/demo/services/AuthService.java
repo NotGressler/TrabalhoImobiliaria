@@ -87,10 +87,10 @@ public class AuthService {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder().issuer("demo").subject(user.getId().toString())
             .issuedAt(now).expiresAt(now.plusSeconds(3600))
-            .claim("roles", List.of(user.getTipo())).build();
+            .claim("tipo", user.getTipo()).build();
         String token = encoder.encode(JwtEncoderParameters.from(
             JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
-        return new TokenDTO(token, "Bearer", 3600);
+        return new TokenDTO(token, user.getTipo(), "Bearer", 3600);
     }
 
     private ResponseStatusException unauthorized() {

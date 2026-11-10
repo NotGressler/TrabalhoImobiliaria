@@ -90,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function authenticate(mode: "login" | "register", data: Credentials) {
     generation.current++;
-    const response = await fetch(`${API_URL}/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    const path = mode === "login" ? "/public/login" : "/auth/register";
+    const response = await fetch(`${API_URL}${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
     if (!response.ok) {
       const result = await response.json().catch(() => null);
       if ([400, 401, 409].includes(response.status) && typeof result?.message === "string") throw new Error(result.message);

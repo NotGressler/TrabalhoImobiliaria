@@ -5,6 +5,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
 public class FrontendController {
+    @GetMapping({"/imovel", "/imovel/"})
+    public String property() { return "forward:/imovel/index.html"; }
+
     @GetMapping({"/entrar", "/entrar/"})
     public String login() { return "forward:/entrar/index.html"; }
 

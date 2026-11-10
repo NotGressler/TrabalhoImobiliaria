@@ -43,6 +43,12 @@ O Maven inclui `frontend/out` nos recursos estáticos do JAR. Ao executar o JAR,
 
 Já existem a vitrine pública, consultas de imóveis/fotos e a base do backend para autenticação, usuários, imóveis, bairros, tipos e fotos. Cadastro, login e acesso à vitrine como cliente já estão disponíveis. As funcionalidades de ofertas, contratos e os painéis administrativos descritos em `Funcionalidades.md` ainda precisam ser desenvolvidos.
 
+## Contato nos detalhes do imóvel
+
+Os cards abrem uma página pública própria em `/imovel/?id=CODIGO`, com galeria, valores, descrição, favoritos para clientes e formulário de contato. O endereço pode ser aberto diretamente ou compartilhado, inclusive para imóveis cadastrados depois da compilação do site.
+
+O formulário da vitrine envia nome, telefone com DDD, e-mail e mensagem por `POST /imoveis/sabermais/{id}`, disponível também sem login. A mensagem é encaminhada à imobiliária, no endereço `joaopatrao@jgimoveis.com.br` exibido no site. Para usar outra caixa de entrada, defina `APP_MAIL_CONTACT` no `.env`. O envio depende da configuração de e-mail existente; falhas são apresentadas ao visitante sem apagar o formulário.
+
 ## Login e cadastro
 
 - `/entrar/`: login de clientes e administradores.

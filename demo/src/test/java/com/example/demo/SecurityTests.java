@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import jakarta.servlet.Filter;
 import java.time.Instant;
-import java.util.List;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -31,11 +30,14 @@ class SecurityTests {
         @GetMapping("/_next/static/test.js") String asset() { return "script"; }
         @GetMapping("/images/logo-jg.png") String logo() { return "image"; }
         @GetMapping("/imoveis") String list() { return "[]"; }
+        @GetMapping("/imovel/") String propertyPage() { return "property"; }
         @PostMapping("/imoveis") void insert() {}
         @GetMapping("/fotos/vitrine") String photos() { return "[]"; }
         @PostMapping("/fotos") void insertPhoto() {}
         @PostMapping("/users") void user() {}
         @PostMapping("/auth/register") void register() {}
+        @PostMapping("/public/login") void login() {}
+        @PostMapping("/imoveis/sabermais/{id}") void contato() {}
         @GetMapping("/auth/me") String me() { return "session"; }
         @PostMapping("/bairros") void bairro() {}
         @PostMapping("/tipos_imoveis") void tipo() {}
@@ -63,6 +65,7 @@ class SecurityTests {
             String user = token(encoder, "USER", Instant.now().plusSeconds(3600));
             String admin = token(encoder, "ADMIN", Instant.now().plusSeconds(3600));
             mvc.perform(get("/imoveis")).andExpect(status().isOk());
+            mvc.perform(get("/imovel/").param("id", "1")).andExpect(status().isOk());
             mvc.perform(get("/fotos/vitrine")).andExpect(status().isOk());
             mvc.perform(post("/imoveis")).andExpect(status().isUnauthorized());
             mvc.perform(post("/fotos")).andExpect(status().isUnauthorized());
@@ -77,6 +80,9 @@ class SecurityTests {
             mvc.perform(patch("/imoveis/1/status").header("Authorization", "Bearer " + user)).andExpect(status().isForbidden());
             mvc.perform(patch("/imoveis/1/status").header("Authorization", "Bearer " + admin)).andExpect(status().isOk());
             mvc.perform(post("/auth/register")).andExpect(status().isOk());
+            mvc.perform(post("/public/login")).andExpect(status().isOk());
+            mvc.perform(post("/imoveis/sabermais/1")).andExpect(status().isOk());
+            mvc.perform(post("/imoveis/sabermais/1").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
             mvc.perform(get("/auth/me")).andExpect(status().isUnauthorized());
             mvc.perform(get("/auth/me").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
             mvc.perform(post("/bairros").header("Authorization", "Bearer " + user)).andExpect(status().isForbidden());
@@ -97,6 +103,6 @@ class SecurityTests {
     private String token(JwtEncoder encoder, String role, Instant expiration) {
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),
             JwtClaimsSet.builder().issuer("demo").subject("1").expiresAt(expiration)
-                .claim("roles", List.of(role)).build())).getTokenValue();
+                .claim("tipo", role).build())).getTokenValue();
     }
 }

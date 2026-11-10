@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="UTF-8"><title>Novo contato — JG Imóveis</title></head>
+<body style="font-family:Arial,sans-serif;color:#15283a;line-height:1.7;max-width:640px;margin:auto;padding:24px">
+  <h1>Novo interesse em um imóvel</h1>
+  <p>Um visitante enviou uma mensagem pela vitrine da JG Imóveis.</p>
+  <h2 th:text="${imovel.titulo}">Imóvel</h2>
+  <p>Código: <strong th:text="${imovel.id}"></strong></p>
+  <p><strong>Nome:</strong> <span th:text="${cliente.nome}"></span><br>
+    <strong>Telefone:</strong> <span th:text="${cliente.telefone}"></span><br>
+    <strong>E-mail:</strong> <span th:text="${cliente.email}"></span></p>
+  <h3>Mensagem</h3>
+  <p th:text="${cliente.mensagem}" style="white-space:pre-line"></p>
+</body>
+</html>

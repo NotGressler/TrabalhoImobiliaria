@@ -54,7 +54,8 @@ class RegistrationTests {
         assertTrue(passwords.matches("senha-segura123", saved.getSenha()));
         var jwt = decoder.decode(result.token());
         assertEquals("42", jwt.getSubject());
-        assertEquals(List.of("USER"), jwt.getClaimAsStringList("roles"));
+        assertEquals("USER", jwt.getClaimAsString("tipo"));
+        assertEquals("USER", result.tipo());
         assertEquals(3600, result.expiresIn());
         when(repository.findById(42)).thenReturn(Optional.of(saved));
         var current = service.currentUser(jwt);

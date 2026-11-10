@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [tipos, setTipos] = useState<Tipo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadWarning, setLoadWarning] = useState("");
   const [notice, setNotice] = useState<{ text: string; warning: boolean } | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -33,12 +34,24 @@ export default function AdminDashboard() {
     return data as T[];
   }, [request]);
   const reload = useCallback(async (signal?: AbortSignal) => {
-    const [items, pictures, neighborhoods, types] = await Promise.all([
+    const [itemsResult, pictures, neighborhoods, types] = await Promise.allSettled([
       readList<AdminProperty>("/imoveis", signal), readList<AdminPhoto>("/fotos/vitrine", signal),
       readList<Bairro>("/bairros", signal), readList<Tipo>("/tipos_imoveis", signal)
     ]);
     if (signal?.aborted) return;
-    setProperties(items); setPhotos(pictures); setBairros(neighborhoods); setTipos(types);
+    if (itemsResult.status === "rejected") throw itemsResult.reason;
+    const items = itemsResult.value;
+    setProperties(items);
+    setError("");
+    if (pictures.status === "fulfilled") setPhotos(pictures.value);
+    // Mantém os vínculos dos anúncios existentes disponíveis para edição
+    // mesmo quando uma consulta auxiliar está temporariamente indisponível.
+    setBairros(neighborhoods.status === "fulfilled" ? neighborhoods.value
+      : Array.from(new Map(items.flatMap((item) => item.bairro ? [[item.bairro.id, item.bairro] as const] : [])).values()));
+    setTipos(types.status === "fulfilled" ? types.value
+      : Array.from(new Map(items.flatMap((item) => item.tipoImovel ? [[item.tipoImovel.id, item.tipoImovel] as const] : [])).values()));
+    const missing = [pictures.status === "rejected" && "fotos", neighborhoods.status === "rejected" && "bairros", types.status === "rejected" && "tipos de imóvel"].filter(Boolean);
+    setLoadWarning(missing.length ? `Os imóveis foram carregados, mas não foi possível atualizar: ${missing.join(", ")}. As opções de edição podem estar incompletas. Tente carregar novamente.` : "");
   }, [readList]);
   useEffect(() => {
     const controller = new AbortController();
@@ -78,6 +91,7 @@ export default function AdminDashboard() {
         {[["Imóveis cadastrados", properties.length], ["Disponíveis", properties.filter((property) => normalize(property.status) === "disponivel").length], ["Reservados", properties.filter((property) => normalize(property.status) === "reservado").length], ["Em destaque", properties.filter((property) => property.destaque).length]].map(([label, value]) => <div key={label}><span>{label}</span><strong>{loading ? "—" : value}</strong></div>)}
       </div>
       {notice && <div className={notice.warning ? "admin-notice is-warning" : "admin-notice"} role="status"><span>{notice.text}</span><button aria-label="Fechar mensagem" type="button" onClick={() => setNotice(null)}>×</button></div>}
+      {loadWarning && <div className="admin-notice is-warning" role="status"><span>{loadWarning}</span><button className="text-button" type="button" disabled={loading} onClick={async () => { setLoading(true); try { await reload(); } catch (failure) { setError(friendlyError(failure)); } finally { setLoading(false); } }}>Tentar novamente</button></div>}
       <section className="admin-inventory" aria-labelledby="inventory-title">
         <div className="admin-inventory-heading"><div><h2 id="inventory-title">Imóveis cadastrados</h2><p>{filtered.length} {filtered.length === 1 ? "imóvel na lista" : "imóveis na lista"}</p></div><div className="admin-filters"><label><span className="admin-sr-only">Buscar imóveis</span><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título, bairro ou código" /></label><label><span className="admin-sr-only">Filtrar situação</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todas as situações</option>{Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div></div>
         {loading ? <div className="state-panel" role="status"><span className="loading-spinner" />Carregando imóveis...</div>

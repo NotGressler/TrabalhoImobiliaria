@@ -33,17 +33,18 @@ class SaberMaisTests {
         emails = mock(EmailService.class);
         ReflectionTestUtils.setField(controller, "service", imoveis);
         ReflectionTestUtils.setField(controller, "emailService", emails);
+        ReflectionTestUtils.setField(controller, "contatoEmail", "contato@example.com");
     }
 
     @Test
-    void enviaDadosDoImovelAoEmailDoCliente() throws Exception {
+    void enviaSolicitacaoAoContatoDaImobiliaria() throws Exception {
         ImovelModel imovel = new ImovelModel();
         imovel.setId(1);
         imovel.setTitulo("Casa com jardim");
         when(imoveis.find(1)).thenReturn(imovel);
         assertEquals(200, controller.saberMais(1, cliente).getStatusCode().value());
-        verify(emails).enviarEmailComTemplate(cliente.email(), "Informações sobre o imóvel: Casa com jardim",
-                "email/imovel", Map.of("cliente", cliente, "imovel", imovel));
+        verify(emails).enviarEmailComTemplate("contato@example.com", "Contato sobre o imóvel #1",
+                "email/contato", Map.of("cliente", cliente, "imovel", imovel));
     }
 
     @Test
@@ -56,6 +57,8 @@ class SaberMaisTests {
     void camposAusentesOuEmailInvalidoNaoEnviamEmail() {
         assertEquals(400, controller.saberMais(1, new SaberMaisDTO("", null, null, null)).getStatusCode().value());
         assertEquals(400, controller.saberMais(1, new SaberMaisDTO("Maria", "123", "invalido", "Olá")).getStatusCode().value());
+        assertEquals(400, controller.saberMais(1, new SaberMaisDTO("Maria", "123", cliente.email(), "Olá")).getStatusCode().value());
+        assertEquals(400, controller.saberMais(1, new SaberMaisDTO("Maria", cliente.telefone(), cliente.email(), "a".repeat(2001))).getStatusCode().value());
         verifyNoInteractions(imoveis, emails);
     }
 

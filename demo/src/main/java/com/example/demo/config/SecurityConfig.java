@@ -46,7 +46,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         JwtGrantedAuthoritiesConverter roles = new JwtGrantedAuthoritiesConverter();
-        roles.setAuthoritiesClaimName("roles");
+        roles.setAuthoritiesClaimName("tipo");
         roles.setAuthorityPrefix("ROLE_");
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(roles);
@@ -57,9 +57,11 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/", "/index.html", "/index.txt", "/_next/**", "/images/**", "/favicon.ico").permitAll()
+                .requestMatchers(HttpMethod.GET, "/imovel", "/imovel/**").permitAll()
                 // As páginas estáticas não contêm dados privados; as APIs exigem JWT.
                 .requestMatchers(HttpMethod.GET, "/entrar", "/entrar/**", "/cadastro", "/cadastro/**", "/cliente", "/cliente/**", "/admin", "/admin/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/public/login", "/auth/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/imoveis/sabermais/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/imoveis", "/imoveis/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/fotos/**").permitAll()
                 .requestMatchers("/favoritos", "/favoritos/**").hasRole("USER")

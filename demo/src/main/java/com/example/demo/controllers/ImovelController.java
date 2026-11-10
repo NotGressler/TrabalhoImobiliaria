@@ -37,6 +37,9 @@ public class ImovelController {
     @Autowired
     private EmailService emailService;
 
+    @org.springframework.beans.factory.annotation.Value("${app.mail.contact:joaopatrao@jgimoveis.com.br}")
+    private String contatoEmail;
+
     @PostMapping("/sabermais/{id}")
     public ResponseEntity<String> saberMais(@PathVariable Integer id, @RequestBody SaberMaisDTO cliente) {
         if (cliente.nome() == null || cliente.nome().isBlank()
@@ -44,6 +47,11 @@ public class ImovelController {
                 || cliente.email() == null || cliente.email().isBlank()
                 || cliente.mensagem() == null || cliente.mensagem().isBlank()) {
             return ResponseEntity.badRequest().body("Informe nome, telefone, email e mensagem.");
+        }
+        if (cliente.nome().length() > 100 || cliente.email().length() > 254
+                || cliente.mensagem().length() > 2000 || cliente.telefone().length() > 20
+                || !cliente.telefone().replaceAll("\\D", "").matches("\\d{10,11}")) {
+            return ResponseEntity.badRequest().body("Confira os dados e informe um telefone com DDD.");
         }
         try {
             InternetAddress endereco = new InternetAddress(cliente.email(), true);
@@ -61,9 +69,9 @@ public class ImovelController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Imóvel não encontrado.");
         }
         try {
-            emailService.enviarEmailComTemplate(cliente.email(), "Informações sobre o imóvel: " + imovel.getTitulo(),
-                    "email/imovel", Map.of("cliente", cliente, "imovel", imovel));
-            return ResponseEntity.ok("Informações do imóvel enviadas para seu email.");
+            emailService.enviarEmailComTemplate(contatoEmail, "Contato sobre o imóvel #" + imovel.getId(),
+                    "email/contato", Map.of("cliente", cliente, "imovel", imovel));
+            return ResponseEntity.ok("Mensagem enviada para a equipe da imobiliária.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body("Não foi possível enviar o email. Tente novamente mais tarde.");
