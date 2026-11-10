@@ -35,6 +35,13 @@ class SecurityTests {
         @GetMapping("/fotos/vitrine") String photos() { return "[]"; }
         @PostMapping("/fotos") void insertPhoto() {}
         @PostMapping("/users") void user() {}
+        @PostMapping("/auth/register") void register() {}
+        @GetMapping("/auth/me") String me() { return "session"; }
+        @PostMapping("/bairros") void bairro() {}
+        @PostMapping("/tipos_imoveis") void tipo() {}
+        @GetMapping("/favoritos") String favoritos() { return "[]"; }
+        @PutMapping("/favoritos/{id}") void favoritar() {}
+        @DeleteMapping("/favoritos/{id}") void desfavoritar() {}
         @PatchMapping("/imoveis/{id}/status") void status() {}
     }
 
@@ -67,7 +74,20 @@ class SecurityTests {
             mvc.perform(post("/fotos").header("Authorization", "Bearer " + admin)).andExpect(status().isOk());
             mvc.perform(post("/users").header("Authorization", "Bearer " + admin)).andExpect(status().isOk());
             mvc.perform(patch("/imoveis/1/status")).andExpect(status().isUnauthorized());
-            mvc.perform(patch("/imoveis/1/status").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
+            mvc.perform(patch("/imoveis/1/status").header("Authorization", "Bearer " + user)).andExpect(status().isForbidden());
+            mvc.perform(patch("/imoveis/1/status").header("Authorization", "Bearer " + admin)).andExpect(status().isOk());
+            mvc.perform(post("/auth/register")).andExpect(status().isOk());
+            mvc.perform(get("/auth/me")).andExpect(status().isUnauthorized());
+            mvc.perform(get("/auth/me").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
+            mvc.perform(post("/bairros").header("Authorization", "Bearer " + user)).andExpect(status().isForbidden());
+            mvc.perform(post("/tipos_imoveis").header("Authorization", "Bearer " + user)).andExpect(status().isForbidden());
+            mvc.perform(get("/favoritos")).andExpect(status().isUnauthorized());
+            mvc.perform(put("/favoritos/1")).andExpect(status().isUnauthorized());
+            mvc.perform(delete("/favoritos/1")).andExpect(status().isUnauthorized());
+            mvc.perform(get("/favoritos").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
+            mvc.perform(put("/favoritos/1").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
+            mvc.perform(delete("/favoritos/1").header("Authorization", "Bearer " + user)).andExpect(status().isOk());
+            mvc.perform(get("/favoritos").header("Authorization", "Bearer " + admin)).andExpect(status().isForbidden());
             mvc.perform(post("/imoveis").header("Authorization", "Bearer invalido")).andExpect(status().isUnauthorized());
             mvc.perform(post("/imoveis").header("Authorization", "Bearer " + token(encoder, "ADMIN", Instant.now().minusSeconds(120))))
                 .andExpect(status().isUnauthorized());

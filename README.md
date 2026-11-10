@@ -41,4 +41,15 @@ O Maven inclui `frontend/out` nos recursos estáticos do JAR. Ao executar o JAR,
 
 ## Escopo atual
 
-Já existem a vitrine pública, consultas de imóveis/fotos e a base do backend para autenticação, usuários, imóveis, bairros, tipos e fotos. As telas privadas e as funcionalidades de ofertas, favoritos e contratos descritas em `Funcionalidades.md` ainda precisam ser desenvolvidas.
+Já existem a vitrine pública, consultas de imóveis/fotos e a base do backend para autenticação, usuários, imóveis, bairros, tipos e fotos. Cadastro, login e acesso à vitrine como cliente já estão disponíveis. As funcionalidades de ofertas, contratos e os painéis administrativos descritos em `Funcionalidades.md` ainda precisam ser desenvolvidos.
+
+## Login e cadastro
+
+- `/entrar/`: login de clientes e administradores.
+- `/cadastro/`: cadastro público, sempre com perfil de cliente (`USER`), com entrada automática por JWT.
+- `/cliente/`: a mesma vitrine, com identificação do cliente, logout e botões de oferta/favorito nos detalhes.
+- `/admin/`: painel protegido com listagem, busca, cadastro, edição e exclusão de imóveis, upload de fotos e escolha de capa. O formulário permite cadastrar bairros e tipos sem sair da edição.
+
+A sessão usa `sessionStorage` e é validada em `GET /auth/me` com `Authorization: Bearer`. Ao expirar, o token é removido e o usuário retorna ao login. O cadastro usa `POST /auth/register`; e-mails repetidos retornam 409 e senhas são armazenadas com BCrypt. A restrição `uk_usuarios_email` impede cadastros duplicados no banco.
+
+Os favoritos já são salvos por cliente e aparecem acima dos destaques. O botão permite salvar e remover imóveis. A API usa GET /favoritos, PUT /favoritos/{imovelId} e DELETE /favoritos/{imovelId}, sempre com JWT de cliente. A janela de detalhes exibe todas as fotos cadastradas em um carrossel à esquerda, com capa primeiro, miniaturas, setas e navegação por teclado ou toque. O envio de ofertas permanece desabilitado nesta etapa.

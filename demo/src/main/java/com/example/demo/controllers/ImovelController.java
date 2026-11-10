@@ -98,13 +98,8 @@ public class ImovelController {
 
     @PutMapping(value = "/{id}")
     public ResponseEntity<Void> update(@RequestBody ImovelModel model, @PathVariable Integer id) {
-        try {
-             model.setId(id);
-             model = service.update(model);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            return ResponseEntity.notFound().build();
-        }
+        model.setId(id);
+        return service.update(model) == null ? ResponseEntity.notFound().build() : ResponseEntity.noContent().build();
        
     }
 

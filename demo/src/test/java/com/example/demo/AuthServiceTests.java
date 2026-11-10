@@ -22,8 +22,8 @@ class AuthServiceTests {
         ReflectionTestUtils.setField(service, "passwordEncoder", encoder);
         var user = new UserModel();
         user.setSenha(encoder.encode("correta"));
-        when(repository.findByEmail("user@exemplo.com")).thenReturn(Optional.of(user));
-        when(repository.findByEmail("naoexiste@exemplo.com")).thenReturn(Optional.empty());
+        when(repository.findByEmailIgnoreCase("user@exemplo.com")).thenReturn(Optional.of(user));
+        when(repository.findByEmailIgnoreCase("naoexiste@exemplo.com")).thenReturn(Optional.empty());
         assertEquals(401, assertThrows(ResponseStatusException.class,
             () -> service.login(new LoginDTO("user@exemplo.com", "errada"))).getStatusCode().value());
         assertEquals(401, assertThrows(ResponseStatusException.class,

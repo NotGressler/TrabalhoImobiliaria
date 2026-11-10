@@ -6,5 +6,7 @@ import com.example.demo.models.UserModel;
 
 public interface UserRepository extends JpaRepository<UserModel, Integer> {
     java.util.Optional<UserModel> findByEmail(String email);
+    java.util.Optional<UserModel> findByEmailIgnoreCase(String email);
+    boolean existsByEmailIgnoreCase(String email);
 
 }

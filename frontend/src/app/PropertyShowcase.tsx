@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { homeFor, useAuth } from "../auth/AuthProvider";
+import PropertyImage from "../components/PropertyImage";
+import PropertyGallery from "../components/PropertyGallery";
+import useFavorites from "../hooks/useFavorites";
 
 export type Property = {
   id: number;
@@ -36,6 +40,7 @@ type Props = {
   propertiesError: string | null;
   photosError: string | null;
   loading?: boolean;
+  clientArea?: boolean;
 };
 
 type Purpose = "todos" | "venda" | "aluguel";
@@ -50,6 +55,7 @@ function normalize(value: string | null | undefined) {
 
 function purposeOf(property: Property): Exclude<Purpose, "todos"> | null {
   const purpose = normalize(property.finalidade);
+  if (purpose === "ambos" || (purpose.includes("vend") && (purpose.includes("alug") || purpose.includes("loca")))) return null;
   if (purpose.includes("vend")) return "venda";
   if (purpose.includes("alug") || purpose.includes("loca")) return "aluguel";
   if (hasPrice(property.precoAluguel) && !hasPrice(property.precoVenda)) return "aluguel";
@@ -129,28 +135,10 @@ function Icon({
   }
 }
 
-function photoFor(propertyId: number, photos: PropertyPhoto[]) {
+function photosFor(propertyId: number, photos: PropertyPhoto[]) {
   return photos
     .filter((photo) => photo.imovelId === propertyId)
-    .sort((a, b) => Number(Boolean(b.capa)) - Number(Boolean(a.capa)) || (a.ordem ?? Infinity) - (b.ordem ?? Infinity))[0];
-}
-
-function PropertyImage({ src, alt }: { src: string | null; alt: string }) {
-  const [failed, setFailed] = useState(false);
-
-  if (!src || failed) {
-    return (
-      <div className="image-placeholder" role="img" aria-label={`${alt} sem foto disponível`}>
-        <span className="placeholder-sun" />
-        <span className="placeholder-building"><i /><i /><i /><i /></span>
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element -- The backend origin is configurable through NEXT_PUBLIC_API_URL.
-    <img className="property-image" src={src} alt={alt} onError={() => setFailed(true)} />
-  );
+    .sort((a, b) => Number(Boolean(b.capa)) - Number(Boolean(a.capa)) || (a.ordem ?? Infinity) - (b.ordem ?? Infinity));
 }
 
 export default function PropertyShowcase({
@@ -160,7 +148,10 @@ export default function PropertyShowcase({
   propertiesError,
   photosError,
   loading = false,
+  clientArea = false,
 }: Props) {
+  const { user, status, logout } = useAuth();
+  const favorites = useFavorites(clientArea && user?.tipo === "USER");
   const [purpose, setPurpose] = useState<Purpose>("todos");
   const [search, setSearch] = useState("");
   const [propertyType, setPropertyType] = useState("");
@@ -169,20 +160,10 @@ export default function PropertyShowcase({
   const [showAll, setShowAll] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const detailDialog = useRef<HTMLDialogElement>(null);
-  const [loginOpen, setLoginOpen] = useState(false);
-  const loginDialog = useRef<HTMLDialogElement>(null);
-  const [loginMessage, setLoginMessage] = useState("");
-  const [loginBusy, setLoginBusy] = useState(false);
-
   useEffect(() => {
     if (selectedProperty) detailDialog.current?.showModal();
     else detailDialog.current?.close();
   }, [selectedProperty]);
-
-  useEffect(() => {
-    if (loginOpen) loginDialog.current?.showModal();
-    else loginDialog.current?.close();
-  }, [loginOpen]);
 
   const availableProperties = useMemo(
     () => properties.filter((property) => normalize(property.status) === "disponivel"),
@@ -220,7 +201,7 @@ export default function PropertyShowcase({
   const displayedProperties = showAll ? visibleProperties : visibleProperties.slice().sort((a, b) => Number(Boolean(b.destaque)) - Number(Boolean(a.destaque))).slice(0, 3);
 
   const imageUrl = (property: Property) => {
-    const photo = photoFor(property.id, photos);
+    const photo = photosFor(property.id, photos)[0];
     if (!photo?.nomeArquivo) return null;
     return `${apiUrl}/fotos/${property.id}/${encodeURIComponent(photo.nomeArquivo)}`;
   };
@@ -230,6 +211,87 @@ export default function PropertyShowcase({
     selectedPurpose == null &&
     hasPrice(selectedProperty.precoVenda) &&
     hasPrice(selectedProperty.precoAluguel);
+
+  const favoriteProperties = favorites.ids.map((id) => properties.find((property) => property.id === id)).filter((property): property is Property => Boolean(property));
+  const renderPropertyCard = (property: Property) => {
+    const propertyPurpose = purposeOf(property);
+    const hasSalePrice = hasPrice(property.precoVenda);
+    const hasRentalPrice = hasPrice(property.precoAluguel);
+    const hasBothPurposes = propertyPurpose == null && hasSalePrice && hasRentalPrice;
+    const picture = imageUrl(property);
+    const location = [property.bairro?.nome, property.bairro?.cidade]
+      .filter(Boolean)
+      .join(", ");
+    const area = formatArea(property.areaTotal);
+
+    return (
+      <article className="property-card" key={property.id} data-property-id={property.id}>
+        <button
+          className="card-image-button"
+          onClick={() => { favorites.clearMessage(); setSelectedProperty(property); }}
+          type="button"
+          aria-label={`Ver detalhes de ${property.titulo ?? `imóvel ${property.id}`}`}
+        >
+          <div className="card-image">
+            <PropertyImage
+              alt={property.titulo ?? `Imóvel ${property.id}`}
+              src={picture}
+            />
+            <span className="purpose-badge">
+              {hasBothPurposes ? "VENDA E LOCAÇÃO" : propertyPurpose === "aluguel" ? "PARA ALUGAR" : propertyPurpose === "venda" ? "À VENDA" : "DISPONÍVEL"}
+            </span>
+            {clientArea && favorites.ids.includes(property.id) ? <span className="featured-badge saved-badge">♥ FAVORITO</span> : property.destaque && <span className="featured-badge">DESTAQUE</span>}
+          </div>
+        </button>
+        <div className="card-content">
+          <div className="card-category-row">
+            <span>{property.tipoImovel?.nome ?? "Imóvel"}</span>
+            <span className="property-code">CÓD. {property.id.toString().padStart(4, "0")}</span>
+          </div>
+          {normalize(property.status) !== "disponivel" && <p className="saved-property-status">{property.status || "Indisponível"}</p>}
+          <h3>{property.titulo || `${property.tipoImovel?.nome ?? "Imóvel"} disponível`}</h3>
+          <p className="card-location"><Icon name="pin" size={15} />{location || "Localização não informada"}</p>
+          <div className="card-features">
+            <span><Icon name="bed" size={17} />{property.dormitorios ?? "—"} <small>quartos</small></span>
+            <span><Icon name="bath" size={17} />{property.banheiros ?? "—"} <small>banhos</small></span>
+            <span><Icon name="car" size={17} />{property.garagem ?? "—"} <small>vagas</small></span>
+            {area && <span className="feature-area">{area}</span>}
+          </div>
+          <div className="card-footer">
+            {hasBothPurposes ? (
+              <div className="price-pair">
+                <div>
+                  <span className="price-label">VENDA</span>
+                  <p className="property-price">{formatCurrency(property.precoVenda)}</p>
+                </div>
+                <div>
+                  <span className="price-label">ALUGUEL</span>
+                  <p className="property-price">{formatCurrency(property.precoAluguel)}<span>/mês</span></p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <span className="price-label">{propertyPurpose === "aluguel" ? "ALUGUEL" : "VALOR DO IMÓVEL"}</span>
+                <p className="property-price">
+                  {formatCurrency(amountOf(property, propertyPurpose ?? "todos"))}
+                  {propertyPurpose === "aluguel" && <span>/mês</span>}
+                </p>
+              </div>
+            )}
+            <button
+              className="details-button"
+              onClick={() => { favorites.clearMessage(); setSelectedProperty(property); }}
+              type="button"
+              aria-label={`Ver detalhes do imóvel ${property.id}`}
+            >
+              Ver detalhes <Icon name="arrow" size={14} />
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+
+  };
 
   return (
     <main>
@@ -244,9 +306,16 @@ export default function PropertyShowcase({
             <a href="#sobre">Sobre nós</a>
             <a href="#contato">Contato</a>
           </nav>
-          <button className="primary-button login-button" onClick={() => { setLoginMessage(""); setLoginOpen(true); }} type="button">Fazer login</button>
+          <div className="account-menu">
+            {status === "authenticated" && user ? <>
+              <a className="account-link" href={homeFor(user)}>{clientArea ? user.nome : user.tipo === "ADMIN" ? "Área do admin" : "Minha área"}</a>
+              <button className="primary-button login-button" onClick={logout} type="button">Sair</button>
+            </> : <a className="primary-button login-button" href="/entrar/">Fazer login</a>}
+          </div>
         </div>
       </header>
+
+      {clientArea && user && <section className="client-banner"><div className="page-shell"><span>ÁREA DO CLIENTE</span><p>Olá, {user.nome}! Encontre o imóvel que combina com você.</p></div></section>}
 
       <section className="hero" id="inicio" aria-labelledby="hero-title">
         <div className="hero-content page-shell">
@@ -295,6 +364,14 @@ export default function PropertyShowcase({
         </div>
       </form>
 
+      {clientArea && user?.tipo === "USER" && <section className="favorites-section page-shell" id="favoritos" aria-labelledby="favorites-title">
+        <div className="section-heading"><div><p className="eyebrow section-eyebrow">ESCOLHIDOS POR VOCÊ</p><h2 id="favorites-title">Meus favoritos</h2><p className="section-description">Seus imóveis preferidos, reunidos em um só lugar.</p></div><span className="favorites-count">{favoriteProperties.length} {favoriteProperties.length === 1 ? "imóvel" : "imóveis"}</span></div>
+        {favorites.loading || loading ? <div className="favorites-empty" role="status">Carregando seus favoritos...</div>
+          : favorites.error || propertiesError ? <div className="favorites-empty" role="alert"><p>{favorites.error || "Não foi possível carregar os imóveis favoritos."}</p><button className="text-button" type="button" onClick={() => propertiesError ? window.location.reload() : favorites.retry()}>Tentar novamente</button></div>
+          : favoriteProperties.length ? <div className="property-grid">{favoriteProperties.map(renderPropertyCard)}</div>
+          : <div className="favorites-empty"><span aria-hidden="true">♡</span><p>Você ainda não tem favoritos. Abra um imóvel e clique em <strong>Favoritar imóvel</strong> para salvá-lo aqui.</p></div>}
+      </section>}
+
       <section className="listing-section page-shell" id="imoveis" aria-labelledby="listing-title">
         <div className="section-heading">
           <div>
@@ -332,83 +409,7 @@ export default function PropertyShowcase({
           </div>
         ) : (
           <div className="property-grid">
-            {displayedProperties.map((property) => {
-              const propertyPurpose = purposeOf(property);
-              const hasSalePrice = hasPrice(property.precoVenda);
-              const hasRentalPrice = hasPrice(property.precoAluguel);
-              const hasBothPurposes = propertyPurpose == null && hasSalePrice && hasRentalPrice;
-              const picture = imageUrl(property);
-              const location = [property.bairro?.nome, property.bairro?.cidade]
-                .filter(Boolean)
-                .join(", ");
-              const area = formatArea(property.areaTotal);
-
-              return (
-                <article className="property-card" key={property.id}>
-                  <button
-                    className="card-image-button"
-                    onClick={() => setSelectedProperty(property)}
-                    type="button"
-                    aria-label={`Ver detalhes de ${property.titulo ?? `imóvel ${property.id}`}`}
-                  >
-                    <div className="card-image">
-                      <PropertyImage
-                        alt={property.titulo ?? `Imóvel ${property.id}`}
-                        src={picture}
-                      />
-                      <span className="purpose-badge">
-                        {hasBothPurposes ? "VENDA E LOCAÇÃO" : propertyPurpose === "aluguel" ? "PARA ALUGAR" : propertyPurpose === "venda" ? "À VENDA" : "DISPONÍVEL"}
-                      </span>
-                      {property.destaque && <span className="featured-badge">DESTAQUE</span>}
-                    </div>
-                  </button>
-                  <div className="card-content">
-                    <div className="card-category-row">
-                      <span>{property.tipoImovel?.nome ?? "Imóvel"}</span>
-                      <span className="property-code">CÓD. {property.id.toString().padStart(4, "0")}</span>
-                    </div>
-                    <h3>{property.titulo || `${property.tipoImovel?.nome ?? "Imóvel"} disponível`}</h3>
-                    <p className="card-location"><Icon name="pin" size={15} />{location || "Localização não informada"}</p>
-                    <div className="card-features">
-                      <span><Icon name="bed" size={17} />{property.dormitorios ?? "—"} <small>quartos</small></span>
-                      <span><Icon name="bath" size={17} />{property.banheiros ?? "—"} <small>banhos</small></span>
-                      <span><Icon name="car" size={17} />{property.garagem ?? "—"} <small>vagas</small></span>
-                      {area && <span className="feature-area">{area}</span>}
-                    </div>
-                    <div className="card-footer">
-                      {hasBothPurposes ? (
-                        <div className="price-pair">
-                          <div>
-                            <span className="price-label">VENDA</span>
-                            <p className="property-price">{formatCurrency(property.precoVenda)}</p>
-                          </div>
-                          <div>
-                            <span className="price-label">ALUGUEL</span>
-                            <p className="property-price">{formatCurrency(property.precoAluguel)}<span>/mês</span></p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div>
-                          <span className="price-label">{propertyPurpose === "aluguel" ? "ALUGUEL" : "VALOR DO IMÓVEL"}</span>
-                          <p className="property-price">
-                            {formatCurrency(amountOf(property, propertyPurpose ?? "todos"))}
-                            {propertyPurpose === "aluguel" && <span>/mês</span>}
-                          </p>
-                        </div>
-                      )}
-                      <button
-                        className="details-button"
-                        onClick={() => setSelectedProperty(property)}
-                        type="button"
-                        aria-label={`Ver detalhes do imóvel ${property.id}`}
-                      >
-                        Ver detalhes <Icon name="arrow" size={14} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+            {displayedProperties.map(renderPropertyCard)}
           </div>
         )}
       </section>
@@ -427,34 +428,10 @@ export default function PropertyShowcase({
           </div>
           <div className="footer-contact"><h2>Entre em contato</h2>
             <p><a href="tel:+5555991975907">(55) 99197-5907</a><span> · </span><a href="mailto:joaopatrao@jgimoveis.com.br">joaopatrao@jgimoveis.com.br</a></p>
-            <small>Projeto acadêmico · JG Imóveis</small>
+            <small>Projeto acadêmico · Gremio maior do sul</small>
           </div>
         </div>
       </footer>
-
-      <dialog ref={loginDialog} className="login-dialog" aria-labelledby="login-title" onClose={() => setLoginOpen(false)} onClick={(event) => { if(event.target === event.currentTarget) setLoginOpen(false); }}>
-        <button className="modal-close" type="button" aria-label="Fechar login" onClick={() => setLoginOpen(false)}><Icon name="close" /></button>
-        <p className="eyebrow section-eyebrow">BEM-VINDO À JG IMÓVEIS</p><h2 id="login-title">Entre na sua conta</h2>
-        <form onSubmit={async (event) => {
-          event.preventDefault();
-          const data = new FormData(event.currentTarget);
-          setLoginBusy(true); setLoginMessage("");
-          try {
-            const response = await fetch(apiUrl + "/auth/login", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({email:data.get("email"), senha:data.get("senha")})});
-            if(!response.ok) { setLoginMessage(response.status === 401 ? "E-mail ou senha inválidos." : "Não foi possível entrar. Tente novamente."); return; }
-            const result = await response.json();
-            if(typeof result.token !== "string" || !result.token) throw new Error("Resposta inválida");
-            sessionStorage.setItem("jg-token", result.token);
-            setLoginMessage("Login realizado com sucesso.");
-          } catch { setLoginMessage("Não foi possível conectar. Tente novamente."); }
-          finally { setLoginBusy(false); }
-        }}>
-          <label>E-mail<input name="email" type="email" autoComplete="username" required placeholder="seu@email.com" /></label>
-          <label>Senha<input name="senha" type="password" autoComplete="current-password" required placeholder="Sua senha" /></label>
-          <button className="primary-button" type="submit" disabled={loginBusy}>{loginBusy ? "Entrando..." : "Entrar"}<Icon name="arrow" size={16} /></button>
-          {loginMessage && <p role="status">{loginMessage}</p>}
-        </form>
-      </dialog>
 
       {selectedProperty && (
         <dialog ref={detailDialog} onClose={() => setSelectedProperty(null)} onClick={(event) => { if(event.target === event.currentTarget) setSelectedProperty(null); }}
@@ -471,14 +448,8 @@ export default function PropertyShowcase({
             >
               <Icon name="close" />
             </button>
-            {imageUrl(selectedProperty) && (
-              <div className="modal-image">
-                <PropertyImage
-                  alt={selectedProperty.titulo ?? `Imóvel ${selectedProperty.id}`}
-                  src={imageUrl(selectedProperty)}
-                />
-              </div>
-            )}
+            <div className="property-detail-layout">
+              <PropertyGallery key={selectedProperty.id} photos={photosFor(selectedProperty.id, photos)} apiUrl={apiUrl} title={selectedProperty.titulo || "Imóvel"} />
             <div className="modal-content">
               <p className="eyebrow section-eyebrow">
                 {selectedHasBothPurposes ? "VENDA E LOCAÇÃO" : selectedPurpose === "aluguel" ? "PARA ALUGAR" : "À VENDA"} · CÓD. {selectedProperty.id.toString().padStart(4, "0")}
@@ -504,7 +475,17 @@ export default function PropertyShowcase({
                 <span><Icon name="car" />{selectedProperty.garagem ?? "—"} vagas</span>
                 {formatArea(selectedProperty.areaTotal) && <span>{formatArea(selectedProperty.areaTotal)}</span>}
               </div>
+              {clientArea && user?.tipo === "USER" && <div className="client-property-actions">
+                <div>
+                  {normalize(selectedProperty.status) === "disponivel" && <button className="primary-button" type="button" disabled title="Em breve">Fazer oferta</button>}
+                  <button className={favorites.ids.includes(selectedProperty.id) ? "secondary-button favorite-button is-saved" : "secondary-button favorite-button"} type="button" disabled={favorites.loading || Boolean(favorites.error) || favorites.busy !== null} aria-pressed={favorites.ids.includes(selectedProperty.id)} onClick={() => { void favorites.toggle(selectedProperty.id); }}><svg width="18" height="18" viewBox="0 0 24 24" fill={favorites.ids.includes(selectedProperty.id) ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z" /></svg>{favorites.busy === selectedProperty.id ? "Salvando..." : favorites.ids.includes(selectedProperty.id) ? "Remover dos favoritos" : "Favoritar imóvel"}</button>
+                </div>
+                <p>O envio de ofertas estará disponível em breve.</p>
+                {favorites.error && <p role="alert">{favorites.error} <button className="text-button" type="button" onClick={favorites.retry}>Tentar novamente</button></p>}
+                {favorites.message && <p className={favorites.message.error ? "favorite-error" : "favorite-success"} role={favorites.message.error ? "alert" : "status"}>{favorites.message.text}</p>}
+              </div>}
               <p className="modal-description">{selectedProperty.descricao || "Mais informações sobre este imóvel em breve."}</p>
+            </div>
             </div>
           </dialog>
       )}

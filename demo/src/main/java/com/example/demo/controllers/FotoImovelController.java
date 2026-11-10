@@ -30,6 +30,7 @@ public class FotoImovelController {
     public List<FotoVitrineDTO> listarParaVitrine() {
         return service.listarFotos().stream()
                 .map(foto -> new FotoVitrineDTO(
+                        foto.getId(),
                         foto.getImovel().getId(),
                         foto.getNomeArquivo(),
                         foto.getCapa(),
@@ -62,5 +63,5 @@ public class FotoImovelController {
         return ResponseEntity.ok(service.tornarCapa(id));
     }
 
-    public record FotoVitrineDTO(Integer imovelId, String nomeArquivo, Boolean capa, Integer ordem) {}
+    public record FotoVitrineDTO(Integer id, Integer imovelId, String nomeArquivo, Boolean capa, Integer ordem) {}
 }

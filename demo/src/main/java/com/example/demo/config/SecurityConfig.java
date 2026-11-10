@@ -57,11 +57,14 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/", "/index.html", "/index.txt", "/_next/**", "/images/**", "/favicon.ico").permitAll()
-                .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
+                // As páginas estáticas não contêm dados privados; as APIs exigem JWT.
+                .requestMatchers(HttpMethod.GET, "/entrar", "/entrar/**", "/cadastro", "/cadastro/**", "/cliente", "/cliente/**", "/admin", "/admin/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/imoveis", "/imoveis/*").permitAll()
                 .requestMatchers(HttpMethod.GET, "/fotos/**").permitAll()
-                .requestMatchers(HttpMethod.PATCH, "/imoveis/*/status").authenticated()
-                .requestMatchers("/users", "/users/**", "/imoveis", "/imoveis/**", "/fotos", "/fotos/**").hasRole("ADMIN")
+                .requestMatchers("/favoritos", "/favoritos/**").hasRole("USER")
+                .requestMatchers(HttpMethod.PATCH, "/imoveis/*/status").hasRole("ADMIN")
+                .requestMatchers("/users", "/users/**", "/imoveis", "/imoveis/**", "/fotos", "/fotos/**", "/bairros", "/bairros/**", "/tipos_imoveis", "/tipos_imoveis/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
             .exceptionHandling(errors -> errors
                 .authenticationEntryPoint((request, response, exception) -> {

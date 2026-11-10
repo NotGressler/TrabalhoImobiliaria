@@ -16,6 +16,9 @@ public class UserService {
     private UserRepository repository;
 
     @Autowired
+    private com.example.demo.repositories.FavoritoRepository favoritos;
+
+    @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     public List<UserModel> getAllUsers() {
@@ -55,7 +58,9 @@ public class UserService {
         }
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void delete(Integer id) {
+        favoritos.deleteByUsuarioId(id);
         repository.deleteById(id);
     }
 
